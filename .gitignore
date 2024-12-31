@@ -1,0 +1,15 @@
+# Common build directories
+build/
+.cache/
+
+# Qt specific
+*.user
+*.autosave
+Makefile*
+*.o
+moc_*
+ui_*
+
+# Editor specific
+.vscode/
+.idea/
