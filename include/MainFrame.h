@@ -1,4 +1,4 @@
-#pragma once
+
 #include <wx/event.h>
 #include <wx/wx.h>
 
@@ -7,6 +7,7 @@
 class MainFrame : public wxFrame {
 public:
     MainFrame();
+    virtual ~MainFrame() = default;
 
 private:
     // event handlers
