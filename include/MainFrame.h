@@ -10,6 +10,7 @@ public:
 
 private:
     // event handlers
+    void onConnect(wxCommandEvent &event);
     void onExit(wxCommandEvent &event);
     void onAbout(wxCommandEvent &event);
 
