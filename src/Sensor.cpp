@@ -1,7 +1,7 @@
 #include "Sensor.h"
 
 Sensor::Sensor(const std::string& pin) :
-    m_pin(std::move(m_pin)),
+    m_pin(pin),
     m_connected(false),
     m_lastValue(0.0f) {}
 
