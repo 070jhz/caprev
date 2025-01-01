@@ -24,6 +24,7 @@ include(${wxWidgets_USE_FILE})
 add_executable(caprev WIN32
     src/main.cpp
     src/MainFrame.cpp
+    src/Sensor.cpp
 )
 
 target_include_directories(caprev PRIVATE include)
