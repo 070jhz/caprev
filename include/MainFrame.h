@@ -23,6 +23,4 @@ private:
     wxTextCtrl *m_pinInput;
     wxButton* m_connectBtn;
     wxListBox* m_sensorList;
-    
-    DECLARE_EVENT_TABLE()
 };
