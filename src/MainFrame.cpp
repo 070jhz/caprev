@@ -1,4 +1,6 @@
 #include "MainFrame.h"
+#include <algorithm>
+#include <memory>
 #include <wx/event.h>
 #include <wx/gdicmn.h>
 #include <wx/msw/button.h>
@@ -7,6 +9,9 @@
 MainFrame::MainFrame() :
     wxFrame(nullptr, wxID_ANY, "Sensor Monitor", wxDefaultPosition, wxSize(800,600)) {
     
+    m_logFile.open("debug.log", std::ios::app);
+
+    log("mainframe construction start");
     CreateStatusBar();
     // create main panels
     m_leftPanel = new wxPanel(this);
@@ -43,6 +48,14 @@ MainFrame::MainFrame() :
     m_pinInput->Bind(wxEVT_TEXT_ENTER, &MainFrame::onConnect,this);
 }
 
+void MainFrame::log(const wxString& message) {
+    if (m_logFile.is_open()) {
+        m_logFile << wxDateTime::Now().Format("%Y-%m-%d %H:%M:%S: ").ToStdString()
+                << message.ToStdString() << std::endl;
+        m_logFile.flush();
+    }
+}
+
 void MainFrame::onExit(wxCommandEvent &event) { Close(true); }
 
 void MainFrame::onAbout(wxCommandEvent &event) {
@@ -51,20 +64,40 @@ void MainFrame::onAbout(wxCommandEvent &event) {
 }
 
 void MainFrame::onConnect(wxCommandEvent &event) {
-    wxString pin = m_pinInput->GetValue().Trim();
+    try {
+        log("onConnect called");
+        wxString pin = m_pinInput->GetValue().Trim();
+        if (pin.IsEmpty()) {
+            log("empty pin detected");
+            wxMessageBox("Please enter a PIN", "Error", wxOK | wxICON_ERROR);
+            return;
+        }
 
-    if (pin.IsEmpty()) {
-        wxMessageBox("Please enter a PIN", "Error", wxOK | wxICON_ERROR);
-        return;
+        // check if sensor already exists
+        std::string pinStr = pin.ToStdString();
+        log("pin value : " + pin);
+
+        auto it = std::find_if(m_sensors.begin(), m_sensors.end(),
+                            [&pinStr](const auto& sensor) { return sensor->getPin() == pinStr; });
+
+        if (it == m_sensors.end()) {
+            // create new sensor
+            log("no sensor found with the pin provided, creating new sensor");
+            auto sensor = std::make_unique<Sensor>(pinStr);
+            if (sensor->connect()) {
+                m_sensors.push_back(std::move(sensor));
+                m_sensorList->Append(pin);
+                SetStatusText("Connected to sensor " + pin);
+            }
+        } else {
+            wxMessageBox("Sensor already connected", "Warning",
+                        wxOK | wxICON_WARNING);
+        }
+
+        m_pinInput->Clear();
+    } catch (const std::exception& e) {
+        wxMessageBox(e.what(), "Error", wxOK | wxICON_ERROR);
     }
-
-    // add to history if not already present
-    if (m_sensorList->FindString(pin) == wxNOT_FOUND) {
-        m_sensorList->Append(pin);
-    }
-
-    m_pinInput->Clear();
-    SetStatusText("Connecting to sensor " + pin + "...");
 }
 
 
