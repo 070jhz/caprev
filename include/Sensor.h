@@ -13,7 +13,7 @@ public:
     explicit Sensor(const std::string& pin);
 
     std::string getPin() { return m_pin; }
-    bool IsConnected() { return m_connected; }
+    bool isConnected() { return m_connected; }
     float getLastValue() const { return m_lastValue; }
     const std::vector<float>& getHistory() const { return m_history; }
 
