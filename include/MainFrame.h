@@ -16,10 +16,11 @@ private:
     // gui elements
     wxMenuBar *m_menuBar;
     wxStatusBar *m_statusBar;
-    wxPanel *leftPanel; // sensor list
+    wxPanel *leftPanel; // sensor connection
     wxPanel *rightPanel; // sensor data
+    wxTextCtrl *m_pinInput;
     wxButton* m_connectBtn;
     wxListBox* m_sensorList;
     
-    DECLARE_EVENT_TABLE();
+    DECLARE_EVENT_TABLE()
 };
