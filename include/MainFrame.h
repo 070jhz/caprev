@@ -15,8 +15,11 @@ public:
 private:
     // event handlers
     void onConnect(wxCommandEvent &event);
+    void onTimer(wxTimerEvent &event);
     void onExit(wxCommandEvent &event);
     void onAbout(wxCommandEvent &event);
+    
+    void updateDisplay();
 
     // gui elements
     wxMenuBar *m_menuBar;
@@ -24,8 +27,11 @@ private:
     wxPanel *m_leftPanel; // sensor connection
     wxPanel *m_rightPanel; // sensor data
     wxTextCtrl *m_pinInput;
-    wxButton* m_connectBtn;
-    wxListBox* m_sensorList;
+    wxButton *m_connectBtn;
+    wxListBox *m_sensorList;
+    wxTimer *m_updateTimer;
+    wxStaticText *m_valueDisplay;
+    static constexpr int TIMER_INTERVAL = 100;
 
     // sensor management
     std::vector<std::unique_ptr<Sensor>> m_sensors;
