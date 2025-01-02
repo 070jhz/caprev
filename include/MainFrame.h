@@ -18,7 +18,7 @@ private:
     void onTimer(wxTimerEvent &event);
     void onExit(wxCommandEvent &event);
     void onAbout(wxCommandEvent &event);
-    
+    void onSensorSelected(wxCommandEvent &event);
     void updateDisplay();
 
     // gui elements
@@ -31,10 +31,11 @@ private:
     wxListBox *m_sensorList;
     wxTimer *m_updateTimer;
     wxStaticText *m_valueDisplay;
-    static constexpr int TIMER_INTERVAL = 100;
+    static constexpr int TIMER_INTERVAL = 1000;
 
     // sensor management
     std::vector<std::unique_ptr<Sensor>> m_sensors;
+    int m_selectedSensor;
     
     // debug logging system
     std::ofstream m_logFile;

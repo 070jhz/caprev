@@ -1,13 +1,17 @@
 #pragma once
 #include <string>
-#include <vector>
+#include <deque>
 
 class Sensor {
 private:
     std::string m_pin;
     bool m_connected;
     float m_lastValue;
-    std::vector<float> m_history;
+    std::deque<float> m_history;
+    float generateRandomFloat() const;
+    static constexpr size_t MAX_HISTORY = 100;
+    static constexpr float MIN_VALUE = 0.0f;
+    static constexpr float MAX_VALUE = 100.0f;
 
 public:
     explicit Sensor(const std::string& pin);
@@ -15,10 +19,11 @@ public:
     std::string getPin() { return m_pin; }
     bool isConnected() { return m_connected; }
     float getLastValue() const { return m_lastValue; }
-    const std::vector<float>& getHistory() const { return m_history; }
+    const std::deque<float> &getHistory() const { return m_history; }
 
     bool connect();
     void disconnect();
 
     void updateValue(float value);
+    void generateTestData();
 };
