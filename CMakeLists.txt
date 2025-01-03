@@ -18,13 +18,14 @@ set(wxWidgets_CONFIGURATION mswu)
 set(wxWidgets_USE_STATIC ON)
 set(wxWidgets_USE_UNICODE ON)
 
-find_package(wxWidgets COMPONENTS core base REQUIRED)
+find_package(wxWidgets COMPONENTS core base adv REQUIRED)
 include(${wxWidgets_USE_FILE})
 
 add_executable(caprev WIN32
     src/main.cpp
     src/MainFrame.cpp
     src/Sensor.cpp
+    src/GraphPanel.cpp
 )
 
 target_include_directories(caprev PRIVATE include)
