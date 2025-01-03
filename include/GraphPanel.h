@@ -44,6 +44,7 @@ private:
     wxPoint m_dragStart;
     int m_viewOffset;
     bool m_isDragging;
+    bool m_autoScrolling;
     bool m_showToolTip;
     
     // logging for debug

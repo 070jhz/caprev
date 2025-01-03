@@ -5,6 +5,7 @@
 #include <wx/font.h>
 #include <wx/gdicmn.h>
 #include <wx/msw/colour.h>
+#include <wx/timer.h>
 #include <wx/wx.h>
 #include <wx/dcbuffer.h>
 
@@ -15,11 +16,13 @@ GraphPanel::GraphPanel(wxWindow* parent) :
     m_mousePos(wxDefaultPosition),
     m_showToolTip(false),
     m_viewOffset(0),
-    m_isDragging(false) {
+    m_isDragging(false),
+    m_autoScrolling(true) {
     
     m_logFile.open("debuggp.log", std::ios::app);
     SetBackgroundStyle(wxBG_STYLE_PAINT);
     SetBackgroundColour(*wxWHITE);
+
     Bind(wxEVT_PAINT, &GraphPanel::onPaint, this);
     Bind(wxEVT_MOTION, &GraphPanel::onMouseMove, this);
     Bind(wxEVT_LEFT_DOWN, &GraphPanel::onMouseLeftDown, this);
@@ -37,7 +40,8 @@ void GraphPanel::addPoint(float value) {
     }
     m_points.push_back(point);
     
-    if (m_viewOffset == 0 && m_points.size() > MAX_POINTS) {
+    // auto scroll
+    if (m_autoScrolling && m_points.size() > MAX_POINTS) {
         m_viewOffset = m_points.size() - MAX_POINTS;
     }
 
@@ -69,6 +73,8 @@ void GraphPanel::onMouseMove(wxMouseEvent &event) {
         if (abs(dx)>10) {
             m_viewOffset += (dx > 0) ? -1 : 1;
             m_viewOffset = std::max(0, m_viewOffset);
+            
+            m_autoScrolling = m_points.size() - 1 >= m_viewOffset && m_points.size()-1 < m_viewOffset + MAX_POINTS;
             m_dragStart = event.GetPosition();
             Refresh();
         }
