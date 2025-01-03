@@ -1,8 +1,10 @@
 #include <wx/event.h>
 #include <wx/wx.h>
+#include <wx/tglbtn.h>
 #include <memory>
 #include <vector>
 #include <fstream>
+#include "GraphPanel.h"
 #include "Sensor.h"
 
 // main window class
@@ -19,6 +21,7 @@ private:
     void onExit(wxCommandEvent &event);
     void onAbout(wxCommandEvent &event);
     void onSensorSelected(wxCommandEvent &event);
+    void onRecordToggle(wxCommandEvent &event);
     void updateDisplay();
 
     // gui elements
@@ -37,7 +40,12 @@ private:
     std::vector<std::unique_ptr<Sensor>> m_sensors;
     int m_selectedSensor;
     
-    // debug logging system
+    // graph stuff
+    GraphPanel *m_graphPanel;
+    wxToggleButton *m_recordBtn;
+    bool m_isRecording;
+
+    // logging for debug
     std::ofstream m_logFile;
     void log(const wxString& message);
 };

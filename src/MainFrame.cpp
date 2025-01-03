@@ -1,18 +1,21 @@
 #include "MainFrame.h"
 #include <algorithm>
 #include <memory>
+#include <string>
 #include <wx/event.h>
 #include <wx/gdicmn.h>
 #include <wx/msw/button.h>
 #include <wx/msw/stattext.h>
 #include <wx/stattext.h>
 #include <wx/textctrl.h>
+#include <wx/tglbtn.h>
 #include <wx/timer.h>
+#include <wx/wx.h>
 
 MainFrame::MainFrame() : m_selectedSensor(-1),
     wxFrame(nullptr, wxID_ANY, "Sensor Monitor", wxDefaultPosition, wxSize(800,600)) {
     
-    m_logFile.open("debug.log", std::ios::app);
+    m_logFile.open("debugmf.log", std::ios::app);
 
     log("mainframe construction start");
     CreateStatusBar();
@@ -51,8 +54,14 @@ MainFrame::MainFrame() : m_selectedSensor(-1),
                                       wxDefaultPosition, wxDefaultSize,
                                       wxALIGN_CENTER | wxST_NO_AUTORESIZE);
     m_valueDisplay->SetFont(m_valueDisplay->GetFont().Scale(1.5));
+    m_graphPanel = new GraphPanel(m_rightPanel);
+    m_graphPanel->SetMinSize(wxSize(300, 200));
+    m_recordBtn = new wxToggleButton(m_rightPanel, wxID_ANY, "Record");
+    m_recordBtn->Bind(wxEVT_TOGGLEBUTTON, &MainFrame::onRecordToggle, this);
 
     rightSizer->Add(m_valueDisplay, 0, wxEXPAND | wxALL, 10);
+    rightSizer->Add(m_recordBtn,0, wxEXPAND | wxALL, 5);
+    rightSizer->Add(m_graphPanel, 1, wxEXPAND | wxALL, 5);
     m_rightPanel->SetSizer(rightSizer);
     
     // add panels to main layout
@@ -75,16 +84,40 @@ void MainFrame::log(const wxString& message) {
     }
 }
 
+void MainFrame::onRecordToggle(wxCommandEvent &event) {
+    m_isRecording = m_recordBtn->GetValue();
+
+    if (m_isRecording) {
+        if (m_selectedSensor < 0 || m_selectedSensor >= m_sensors.size()) {
+            wxMessageBox("Please select a sensor first", "Warning", wxOK | wxICON_WARNING);
+            m_recordBtn->SetValue(false);
+            m_isRecording = false;
+            return;
+        }
+        m_graphPanel->clear();
+        m_graphPanel->resetTime();
+    }
+}
+
 void MainFrame::onSensorSelected(wxCommandEvent &event) {
     m_selectedSensor = m_sensorList->GetSelection();
-    log("selected sensor " + m_selectedSensor);
     updateDisplay();
 }
 
 void MainFrame::onTimer(wxTimerEvent &event) {
+    // update sensor data
     for (auto& sensor : m_sensors) {
         if (sensor && sensor->isConnected()) {
             sensor->generateTestData();
+        }
+    }
+
+    // update graph if recording
+    if (m_isRecording && m_selectedSensor >= 0) {
+        auto& sensor = m_sensors[m_selectedSensor];
+        if (sensor && sensor->isConnected()) {
+            log("adding point :" + std::to_string(sensor->getLastValue()));
+            m_graphPanel->addPoint(sensor->getLastValue());
         }
     }
 
