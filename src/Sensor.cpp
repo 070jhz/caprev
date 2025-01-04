@@ -1,18 +1,29 @@
 #include "Sensor.h"
+#include "TCPClient.h"
+#include <memory>
 #include <random>
 
 Sensor::Sensor(const std::string& pin) :
     m_pin(pin),
     m_connected(false),
-    m_lastValue(0.0f) {}
+    m_lastValue(0.0f) {
+    m_client = std::make_shared<TCPClient>();
+    m_client->setDataCallback([this](float value) {
+        updateValue(value);
+    });
+}
 
 bool Sensor::connect() {
-    m_connected = true; // to be replaced with actual connection logic
-    return m_connected;
+    if (!m_client->connect()) return false;
+    if (!m_client->sendPinRequest(m_pin)) return false;
+    m_connected = true;
+    return true;
 }
 
 void Sensor::disconnect() {
-    m_connected = false; // same
+    if (m_client) {
+        m_client->disconnect();
+    }
 }
 
 void Sensor::updateValue(float value) {

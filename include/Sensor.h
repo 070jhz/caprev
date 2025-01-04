@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 #include <deque>
+#include <memory>
+#include "TCPClient.h"
 
 class Sensor {
 private:
@@ -8,10 +10,7 @@ private:
     bool m_connected;
     float m_lastValue;
     std::deque<float> m_history;
-    float generateRandomFloat() const;
-    static constexpr size_t MAX_HISTORY = 100;
-    static constexpr float MIN_VALUE = 0.0f;
-    static constexpr float MAX_VALUE = 100.0f;
+    std::shared_ptr<TCPClient> m_client;
 
 public:
     explicit Sensor(const std::string& pin);
@@ -25,5 +24,12 @@ public:
     void disconnect();
 
     void updateValue(float value);
+
+    // debug-only
+    static constexpr size_t MAX_HISTORY = 100;
+    static constexpr float MIN_VALUE = 0.0f;
+    static constexpr float MAX_VALUE = 100.0f;
+
+    float generateRandomFloat() const;
     void generateTestData();
 };
