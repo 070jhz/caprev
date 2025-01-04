@@ -1,9 +1,9 @@
 #include "MainFrame.h"
-#include <algorithm>
 #include <memory>
 #include <string>
 #include <wx/event.h>
 #include <wx/gdicmn.h>
+#include <wx/msgdlg.h>
 #include <wx/msw/button.h>
 #include <wx/msw/stattext.h>
 #include <wx/stattext.h>
@@ -68,12 +68,6 @@ MainFrame::MainFrame() : m_selectedSensor(-1),
     mainSizer->Add(m_leftPanel, 3, wxEXPAND | wxALL, 5);
     mainSizer->Add(m_rightPanel, 7, wxEXPAND | wxALL);
     SetSizer(mainSizer);
-
-
-    // timer setup
-    m_updateTimer = new wxTimer(this);
-    Bind(wxEVT_TIMER, &MainFrame::onTimer, this);
-    m_updateTimer->Start(TIMER_INTERVAL);
 }
 
 void MainFrame::log(const wxString& message) {
@@ -105,13 +99,6 @@ void MainFrame::onSensorSelected(wxCommandEvent &event) {
 }
 
 void MainFrame::onTimer(wxTimerEvent &event) {
-    // update sensor data
-    for (auto& sensor : m_sensors) {
-        if (sensor && sensor->isConnected()) {
-            sensor->generateTestData();
-        }
-    }
-
     // update graph if recording
     if (m_isRecording && m_selectedSensor >= 0) {
         auto& sensor = m_sensors[m_selectedSensor];
@@ -154,40 +141,70 @@ void MainFrame::onAbout(wxCommandEvent &event) {
 
 void MainFrame::onConnect(wxCommandEvent &event) {
     try {
-        log("onConnect called");
         wxString pin = m_pinInput->GetValue().Trim();
         if (pin.IsEmpty()) {
-            log("empty pin detected");
-            wxMessageBox("Please enter a PIN", "Error", wxOK | wxICON_ERROR);
+            wxMessageBox("Please enter a PIN", "Error");
             return;
         }
 
-        // check if sensor already exists
         std::string pinStr = pin.ToStdString();
-        log("pin value : " + pin);
-
+        
+        // Check if sensor already exists
         auto it = std::find_if(m_sensors.begin(), m_sensors.end(),
-                            [&pinStr](const auto& sensor) { return sensor->getPin() == pinStr; });
+            [&pinStr](const auto& sensor) { 
+                return sensor->getPin() == pinStr; 
+            });
 
-        if (it == m_sensors.end()) {
-            // create new sensor
-            log("no sensor found with the pin provided, creating new sensor");
-            auto sensor = std::make_unique<Sensor>(pinStr);
-            if (sensor->connect()) {
-                m_sensors.push_back(std::move(sensor));
-                m_sensorList->Append(pin);
-                SetStatusText("Connected to sensor " + pin);
-            }
-        } else {
-            wxMessageBox("Sensor already connected", "Warning",
-                        wxOK | wxICON_WARNING);
+        if (it != m_sensors.end()) {
+            wxMessageBox("Sensor already connected", "Error");
+            return;
         }
 
+        // Create new client for this sensor
+        auto client = std::make_unique<TCPClient>();
+        client->setDataCallback([this, pinStr](float value) {
+            auto it = std::find_if(m_sensors.begin(), m_sensors.end(),
+                [&pinStr](const auto& sensor) { 
+                    return sensor->getPin() == pinStr; 
+                });
+            if (it != m_sensors.end()) {
+                (*it)->updateValue(value);
+                updateDisplay();
+            }
+        });
+
+        if (!client->connect() || !client->waitForConnection(10)) {
+            wxMessageBox("Failed to connect to Unity", "Error");
+            return;
+        }
+
+        if (!client->sendPinRequest(pinStr)) {
+            wxMessageBox("Failed to connect to sensor", "Error");
+            return;
+        }
+
+        // Add new sensor and client
+        auto sensor = std::make_unique<Sensor>(pinStr);
+        m_sensorList->Append(pin);
+        m_sensors.push_back(std::move(sensor));
+        m_clients.push_back(std::move(client));
+        
+        SetStatusText("Connected to sensor " + pin);
         m_pinInput->Clear();
+
     } catch (const std::exception& e) {
-        wxMessageBox(e.what(), "Error", wxOK | wxICON_ERROR);
+        wxMessageBox(e.what(), "Error");
     }
 }
 
+void MainFrame::onSensorData(float value) {
+    if (m_selectedSensor >= 0 && m_selectedSensor < m_sensors.size()) {
+        m_sensors[m_selectedSensor]->updateValue(value);
+        if (m_isRecording) {
+            m_graphPanel->addPoint(value);
+        }
+        updateDisplay();
+    }
+}
 
 

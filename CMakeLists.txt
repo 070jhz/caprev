@@ -18,7 +18,7 @@ set(wxWidgets_CONFIGURATION mswu)
 set(wxWidgets_USE_STATIC ON)
 set(wxWidgets_USE_UNICODE ON)
 
-find_package(wxWidgets COMPONENTS core base adv REQUIRED)
+find_package(wxWidgets COMPONENTS core base adv net REQUIRED)
 include(${wxWidgets_USE_FILE})
 
 add_executable(caprev WIN32

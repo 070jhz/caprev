@@ -1,9 +1,12 @@
-#include <wx/event.h>
-#include <wx/wx.h>
-#include <wx/tglbtn.h>
+#pragma once
+
 #include <memory>
 #include <vector>
 #include <fstream>
+#include <wx/event.h>
+#include <wx/wx.h>
+#include <wx/tglbtn.h>
+
 #include "GraphPanel.h"
 #include "Sensor.h"
 
@@ -20,7 +23,7 @@ private:
     void onTimer(wxTimerEvent &event);
     void onExit(wxCommandEvent &event);
     void onAbout(wxCommandEvent &event);
-    void onSensorSelected(wxCommandEvent &event);
+    void onConnectionStatus(bool connected);
     void onRecordToggle(wxCommandEvent &event);
     void updateDisplay();
 
@@ -44,6 +47,12 @@ private:
     GraphPanel *m_graphPanel;
     wxToggleButton *m_recordBtn;
     bool m_isRecording;
+
+    // network
+    void onSensorSelected(wxCommandEvent &event);
+    void onSensorData(float value);
+    std::vector<std::unique_ptr<TCPClient>> m_clients;
+
 
     // logging for debug
     std::ofstream m_logFile;

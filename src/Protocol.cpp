@@ -1,4 +1,4 @@
-#include "Protocol.h"
+#include "../include/Protocol.h"
 #include <cstdint>
 #include <cstring>
 
@@ -7,18 +7,23 @@ namespace Protocol {
 std::vector<uint8_t> serialize(const UnityMessage& msg) {
     std::vector<uint8_t> buf;
     buf.reserve(MAX_MESSAGE_SIZE);
-
+    
+    // version
     buf.push_back(static_cast<uint8_t>(PROTOCOL_VERSION));
 
+    // type
     buf.push_back(static_cast<uint8_t>(msg.type));
 
+    // pin length and data
     buf.push_back(static_cast<uint8_t>(msg.pin.length()));
     buf.insert(buf.end(), msg.pin.begin(), msg.pin.end());
-
+    
+    // value
     const uint8_t* valuePtr = reinterpret_cast<const uint8_t*>(&msg.value);
     buf.insert(buf.end(), valuePtr, valuePtr + sizeof(float));
-
-    if (msg.type == UnityMessage::Type::ERROR) {
+    
+    // error if present
+    if (msg.type == UnityMessage::Type::ERROR_STATE) {
         uint8_t errorLen = static_cast<uint8_t>(msg.error.length());
         buf.push_back(errorLen);
         buf.insert(buf.end(), msg.error.begin(), msg.error.end());
@@ -53,7 +58,7 @@ UnityMessage deserialize(const std::vector<uint8_t>& data) {
     offset += sizeof(float);
 
     // read error if present
-    if (msg.type == UnityMessage::Type::ERROR && offset < data.size()) {
+    if (msg.type == UnityMessage::Type::ERROR_STATE && offset < data.size()) {
         uint8_t errorLen = data[offset++];
         if (offset + errorLen <= data.size()) {
             msg.error.assign(data.begin() + offset, data.begin() + offset + errorLen);
