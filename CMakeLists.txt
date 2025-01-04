@@ -26,6 +26,8 @@ add_executable(caprev WIN32
     src/MainFrame.cpp
     src/Sensor.cpp
     src/GraphPanel.cpp
+    src/Protocol.cpp
+    src/TCPClient.cpp
 )
 
 target_include_directories(caprev PRIVATE include)
