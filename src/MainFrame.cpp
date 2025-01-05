@@ -68,6 +68,11 @@ MainFrame::MainFrame() : m_selectedSensor(-1),
     mainSizer->Add(m_leftPanel, 3, wxEXPAND | wxALL, 5);
     mainSizer->Add(m_rightPanel, 7, wxEXPAND | wxALL);
     SetSizer(mainSizer);
+    
+    Bind(wxEVT_THREAD, &MainFrame::onSensorUpdate, this);
+    m_updateTimer = new wxTimer(this);
+    Bind(wxEVT_TIMER, &MainFrame::onTimer, this);
+    m_updateTimer->Start(TIMER_INTERVAL);
 }
 
 void MainFrame::log(const wxString& message) {
@@ -99,20 +104,22 @@ void MainFrame::onSensorSelected(wxCommandEvent &event) {
 }
 
 void MainFrame::onTimer(wxTimerEvent &event) {
-    // update graph if recording
-    if (m_isRecording && m_selectedSensor >= 0) {
-        auto& sensor = m_sensors[m_selectedSensor];
-        if (sensor && sensor->isConnected()) {
-            log("adding point :" + std::to_string(sensor->getLastValue()));
-            m_graphPanel->addPoint(sensor->getLastValue());
-        }
-    }
+    checkServerConnection();
 
+    if (!isServerConnected()) {
+        m_valueDisplay->SetLabel("Server disconnected");
+        m_recordBtn->SetValue(false);
+        m_isRecording = false;
+        return;
+    }
+ 
     updateDisplay();
 }
 
 void MainFrame::updateDisplay() {
+    log("updateDisplay called");
     if (m_sensors.empty()) {
+        log("No sensors");
         m_valueDisplay->SetLabel("No active sensors");
         return;
     }
@@ -123,6 +130,7 @@ void MainFrame::updateDisplay() {
             wxString value = wxString::Format("Sensor %s - Last value: %.2f",
                                               sensor->getPin(),
                                               sensor->getLastValue());
+            log("Updating display: " + value.ToStdString());
             m_valueDisplay->SetLabel(value);
         }
     } else {
@@ -149,7 +157,7 @@ void MainFrame::onConnect(wxCommandEvent &event) {
 
         std::string pinStr = pin.ToStdString();
         
-        // Check if sensor already exists
+        // check if sensor already exists
         auto it = std::find_if(m_sensors.begin(), m_sensors.end(),
             [&pinStr](const auto& sensor) { 
                 return sensor->getPin() == pinStr; 
@@ -160,36 +168,29 @@ void MainFrame::onConnect(wxCommandEvent &event) {
             return;
         }
 
-        // Create new client for this sensor
+        // create new client for this sensor
         auto client = std::make_unique<TCPClient>();
-        client->setDataCallback([this, pinStr](float value) {
-            auto it = std::find_if(m_sensors.begin(), m_sensors.end(),
-                [&pinStr](const auto& sensor) { 
-                    return sensor->getPin() == pinStr; 
-                });
-            if (it != m_sensors.end()) {
-                (*it)->updateValue(value);
-                updateDisplay();
-            }
+        TCPClient* clientPtr = client.get();
+
+        clientPtr->setDataCallback([this, pinStr](float value) {
+            wxThreadEvent* evt = new wxThreadEvent(wxEVT_THREAD);
+            evt->SetString(pinStr);
+            evt->SetPayload(value);
+            wxQueueEvent(this, evt);
         });
 
-        if (!client->connect() || !client->waitForConnection(10)) {
+
+        if (!clientPtr->connect() || !clientPtr->waitForConnection(10)) {
             wxMessageBox("Failed to connect to Unity", "Error");
             return;
         }
 
-        if (!client->sendPinRequest(pinStr)) {
+        if (!clientPtr->sendPinRequest(pinStr)) {
             wxMessageBox("Failed to connect to sensor", "Error");
             return;
         }
 
-        // Add new sensor and client
-        auto sensor = std::make_unique<Sensor>(pinStr);
-        m_sensorList->Append(pin);
-        m_sensors.push_back(std::move(sensor));
         m_clients.push_back(std::move(client));
-        
-        SetStatusText("Connected to sensor " + pin);
         m_pinInput->Clear();
 
     } catch (const std::exception& e) {
@@ -197,14 +198,62 @@ void MainFrame::onConnect(wxCommandEvent &event) {
     }
 }
 
-void MainFrame::onSensorData(float value) {
-    if (m_selectedSensor >= 0 && m_selectedSensor < m_sensors.size()) {
-        m_sensors[m_selectedSensor]->updateValue(value);
-        if (m_isRecording) {
+void MainFrame::onSensorUpdate(wxThreadEvent& evt)
+{
+   std::string pin = evt.GetString().ToStdString();
+    float value = evt.GetPayload<float>();
+    
+    if (value == -1.0f) {  // Error state
+        wxMessageBox("Invalid PIN", "Error");
+        return;
+    }
+    
+    if (value == 1000.0f) {  // PIN_RESPONSE success
+        auto it = std::find_if(m_sensors.begin(), m_sensors.end(),
+            [&pin](const auto& sensor) { 
+                return sensor->getPin() == pin; 
+            });
+            
+        if (it == m_sensors.end()) {
+            auto sensor = std::make_unique<Sensor>(pin);
+            sensor->setConnected(true);
+            m_sensorList->Append(wxString(pin));
+            m_sensors.push_back(std::move(sensor));
+        }
+        return;
+    }
+    
+    onSensorData(value, pin);
+}
+
+void MainFrame::onSensorData(float value, const std::string &pin) {
+    auto it = std::find_if(m_sensors.begin(), m_sensors.end(),
+        [&pin](const auto& sensor) { 
+            return sensor->getPin() == pin; 
+        });
+        
+    if (it != m_sensors.end()) {
+        (*it)->updateValue(value);
+        
+        if (m_selectedSensor >= 0 && 
+            m_selectedSensor < m_sensors.size() && 
+            m_sensors[m_selectedSensor]->getPin() == pin && 
+            m_isRecording) {
             m_graphPanel->addPoint(value);
         }
         updateDisplay();
     }
 }
 
+void MainFrame::checkServerConnection() {
+    m_clients.erase(
+        std::remove_if(m_clients.begin(), m_clients.end(),
+            [](const auto& client) { return !client->isConnected(); }),
+        m_clients.end());
+}
+
+bool MainFrame::isServerConnected() const {
+    return std::any_of(m_clients.begin(), m_clients.end(), 
+                       [](const auto& client) { return client->isConnected(); });
+}
 

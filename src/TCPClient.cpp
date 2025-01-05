@@ -1,10 +1,13 @@
 #include "TCPClient.h"
 #include "Protocol.h"
+#include <wx/event.h>
 #include <wx/sckaddr.h>
 #include <wx/socket.h>
+#include <wx/textctrl.h>
 #include <wx/utils.h>
 #include <wx/stopwatch.h>
 #include <wx/app.h>
+#include <wx/wx.h>
 
 TCPClient::TCPClient(const wxString &address, int port)
     : m_address(address), m_port(port), m_connected(false) {
@@ -63,7 +66,7 @@ bool TCPClient::sendMessage(const UnityMessage &msg) {
         auto data = Protocol::serialize(msg);
         uint32_t size = static_cast<uint32_t>(data.size());
 
-        // Write message size
+        // write message size
         m_client->Write(&size, sizeof(size));
         if (m_client->Error() || m_client->LastCount() != sizeof(size)) {
             log("Failed to write size - bytes written: " + 
@@ -71,7 +74,7 @@ bool TCPClient::sendMessage(const UnityMessage &msg) {
             return false;
         }
 
-        // Write message data
+        // write message data
         m_client->Write(data.data(), data.size());
         if (m_client->Error() || m_client->LastCount() != data.size()) {
             log("Failed to write data - bytes written: " + 
@@ -92,32 +95,58 @@ void TCPClient::handleIncomingData() {
     try {
         uint32_t msgSize;
         m_client->Read(&msgSize, sizeof(msgSize));
+        log("Received message size: " + wxString::Format("%u", msgSize));
         
         std::vector<uint8_t> data(msgSize);
         m_client->Read(data.data(), msgSize);
+        log("Read message data bytes: " + wxString::Format("%zu", data.size()));
         
         UnityMessage msg = Protocol::deserialize(data);
         log("Received message type: " + wxString::Format("%d", static_cast<int>(msg.type)));
-        
+
         switch(msg.type) {
+            case UnityMessage::Type::ERROR_STATE:
+                log("Error received: " + wxString(msg.error));
+                if (m_onData) {
+                    m_onData(-1.0f);  // signal error to prevent sensor creation
+                }
+                break;
+                
             case UnityMessage::Type::PIN_RESPONSE:
                 log("PIN Response received: " + wxString::Format("%.1f", msg.value));
-                if (msg.value > 0) {
+                if (!m_handshakeComplete) {
+                    // initial handshake response
                     m_connected = true;
-                    log("Sensor connection confirmed");
+                    m_handshakeComplete = true;
+                    log("Initial handshake complete");
                 } else {
-                    log("PIN rejected");
-                    disconnect();
+                    // actual PIN validation response
+                    if (msg.value > 0) {
+                        if (m_onData) {
+                            m_onData(1000.0f);  // signal success
+                        }
+                        log("Sensor connection confirmed");
+                    } else {
+                        if (m_onData) {
+                            m_onData(-1.0f);  // signal error
+                        }
+                        log("PIN rejected");
+                    }
                 }
                 break;
                 
             case UnityMessage::Type::SENSOR_DATA:
-                if (m_onData) m_onData(msg.value);
+                if (m_connected && m_handshakeComplete) {
+                    log("New sensor data: " + wxString::Format("%.2f", msg.value));
+                    if (m_onData) {
+                        m_onData(msg.value);
+                    }
+                }
                 break;
         }
     } catch (const ProtocolError& e) {
-        log("Protocol error: " + wxString(e.what()));
-        disconnect();
+        log("Protocol error in handleIncomingData: " + wxString(e.what()));
+        // disconnect();
     }
 }
 
@@ -126,7 +155,6 @@ void TCPClient::onSocketEvent(wxSocketEvent &event) {
         case wxSOCKET_CONNECTION:
             log("Connection established at socket level");
             if (m_client->IsConnected()) {
-                wxMilliSleep(100);
                 UnityMessage msg;
                 msg.type = UnityMessage::Type::CONNECT;
                 if (sendMessage(msg)) {

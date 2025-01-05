@@ -15,7 +15,7 @@ struct UnityMessage {
         PIN_REQUEST,    // app requests access to sensor 
         PIN_RESPONSE,   // unity confirms or rejects
         SENSOR_DATA,    // unity sends sensor reading
-        ERROR_STATE           // error condition
+        ERROR_STATE     // error condition
     };
 
     Type type;

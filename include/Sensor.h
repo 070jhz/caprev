@@ -16,9 +16,14 @@ public:
     explicit Sensor(const std::string& pin);
 
     std::string getPin() { return m_pin; }
+    void setConnected(bool state) { m_connected = state; }
     bool isConnected() { return m_connected; }
     float getLastValue() const { return m_lastValue; }
     const std::deque<float> &getHistory() const { return m_history; }
+    void clearValue() {
+        m_lastValue = 0.0f;
+        m_connected = false;
+    }
 
     bool connect();
     void disconnect();

@@ -25,6 +25,7 @@ private:
     void onAbout(wxCommandEvent &event);
     void onConnectionStatus(bool connected);
     void onRecordToggle(wxCommandEvent &event);
+    void onSensorUpdate(wxThreadEvent &event);
     void updateDisplay();
 
     // gui elements
@@ -49,8 +50,10 @@ private:
     bool m_isRecording;
 
     // network
+    void checkServerConnection();
+    bool isServerConnected() const;
     void onSensorSelected(wxCommandEvent &event);
-    void onSensorData(float value);
+    void onSensorData(float value, const std::string &pin);
     std::vector<std::unique_ptr<TCPClient>> m_clients;
 
 

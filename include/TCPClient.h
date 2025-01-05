@@ -6,7 +6,7 @@
 
 class TCPClient : public wxEvtHandler {
 public:
-    TCPClient(const wxString& address = "172.27.147.202", int port = 8080);
+    TCPClient(const wxString& address = "localhost", int port = 8080);
     ~TCPClient();
 
     bool connect();
