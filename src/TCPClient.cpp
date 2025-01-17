@@ -137,7 +137,6 @@ void TCPClient::handleIncomingData() {
                 
             case UnityMessage::Type::SENSOR_DATA:
                 if (m_connected && m_handshakeComplete) {
-                    log("New sensor data: " + wxString::Format("%.2f", msg.value));
                     if (m_onData) {
                         m_onData(msg.value);
                     }
