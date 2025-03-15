@@ -725,12 +725,13 @@ public class BuildingOrganizer : MonoBehaviour
     [System.Serializable]
     public class BuildingData
     {
-        public Dictionary<string, ProjectInfo> project_info = new Dictionary<string, ProjectInfo>();
+        public ProjectInfo project_info;
         public Dictionary<string, StoreyData> building_storeys = new Dictionary<string, StoreyData>();
         public Dictionary<string, SpaceData> spaces = new Dictionary<string, SpaceData>();
         public Dictionary<string, ComponentData> components = new Dictionary<string, ComponentData>();
         public Dictionary<string, MaterialInfo> materials = new Dictionary<string, MaterialInfo>();
     }
+    
     
     [System.Serializable]
     public class ProjectInfo
